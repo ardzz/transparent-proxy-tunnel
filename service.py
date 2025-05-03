@@ -1,3 +1,4 @@
+import re
 import subprocess
 import socket
 import logging
@@ -398,7 +399,10 @@ def check_http_redirection():
         # Get current IP as seen by external services
         import requests
         current_ip = requests.get('https://ifconfig.co').text.strip()
-        console.print(f"Current public IP: {current_ip}", style="green")
+        # <p><code class="ip">2407:6ac0:3:9d:abcd::1c8</code></p>
+        get_ip = re.search(r'<code class="ip">(.+?)</code>', current_ip)
+        if get_ip:
+            console.print(f"Current public IP: {current_ip}", style="green")
 
         # Get HTTP headers to check for proxy indicators
         headers = requests.get('https://httpbin.org/headers').json()
