@@ -174,7 +174,6 @@ def setup_iptables(redsocks_port, ssh_tunnel_port=None):
     try:
         subprocess.run(["modprobe", "iptable_nat"], check=False)
         subprocess.run(["modprobe", "xt_REDIRECT"], check=False)
-        subprocess.run(["modprobe", "xt_owner"], check=False)  # For matching by process owner/PID
     except Exception as e:
         logging.warning(f"Could not load kernel modules: {e}")
 
@@ -188,17 +187,19 @@ def setup_iptables(redsocks_port, ssh_tunnel_port=None):
             logging.error(error_message)
             raise RuntimeError(error_message)
 
-        # Remove existing rules in a safe way
-        try:
-            subprocess.run(["iptables", "-t", "nat", "-D", "OUTPUT", "-p", "tcp", "-j", "REDSOCKS"], check=False)
-        except:
-            pass
+        # Check if chains exist before trying to modify them
+        result = subprocess.run(["iptables", "-t", "nat", "-L", "REDSOCKS"],
+                                capture_output=True, text=True, check=False)
+        redsocks_exists = result.returncode == 0
 
-        try:
-            subprocess.run(["iptables", "-t", "nat", "-F", "REDSOCKS"], check=False)
-            subprocess.run(["iptables", "-t", "nat", "-X", "REDSOCKS"], check=False)
-        except:
-            pass
+        # Remove existing rules in a safe way
+        if redsocks_exists:
+            try:
+                subprocess.run(["iptables", "-t", "nat", "-D", "OUTPUT", "-p", "tcp", "-j", "REDSOCKS"], check=False)
+                subprocess.run(["iptables", "-t", "nat", "-F", "REDSOCKS"], check=False)
+                subprocess.run(["iptables", "-t", "nat", "-X", "REDSOCKS"], check=False)
+            except:
+                pass
 
         # Create the REDSOCKS chain
         subprocess.run(["iptables", "-t", "nat", "-N", "REDSOCKS"], check=True)
@@ -213,25 +214,18 @@ def setup_iptables(redsocks_port, ssh_tunnel_port=None):
                 logging.error(f"iptables rule failed: {' '.join(rule)}")
                 return False
 
-        # 1. Exclude SSH processes (both the client and sshd)
-        console.print("Excluding SSH processes from redirection", style="cyan")
-        execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "-m", "owner", "--cmd-owner", "ssh", "-j",
-                      "RETURN"])
-        execute_rule(
-            ["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "-m", "owner", "--cmd-owner", "sshd", "-j",
-             "RETURN"])
-
-        # 2. Exclude connections to standard SSH port and custom tunnel port
+        # 1. Exclude standard SSH port
         execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "--dport", "22", "-j", "RETURN"])
+
+        # 2. Exclude localhost connections
+        execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "-d", "localhost", "-j", "RETURN"])
+        execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "-d", "127.0.0.1", "-j", "RETURN"])
 
         # 3. Exclude the SSH tunnel port specifically if provided
         if ssh_tunnel_port:
             console.print(f"Excluding SSH tunnel port {ssh_tunnel_port} from redirection", style="cyan")
             execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "--dport", str(ssh_tunnel_port), "-j",
                           "RETURN"])
-            execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "-d", "127.0.0.1", "--dport",
-                          str(ssh_tunnel_port), "-j", "RETURN"])
-            # Also exclude connections from the tunnel port as source
             execute_rule(["iptables", "-t", "nat", "-A", "REDSOCKS", "-p", "tcp", "--sport", str(ssh_tunnel_port), "-j",
                           "RETURN"])
 
