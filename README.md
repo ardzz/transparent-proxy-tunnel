@@ -1,4 +1,4 @@
-# Transparent Proxy Tool Documentation
+# Transparent Proxy Tool
 ![part_1.png](images/part_1.png)
 ![part_2.png](images/part_2.png)
 ## Overview
