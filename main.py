@@ -99,7 +99,7 @@ def main():
             console.print("Setting up traffic redirection with iptables...", style="cyan")
             setup_iptables(redsocks_port, ssh_tunnel_port)
 
-            verify_traffic_redirection(5020)
+            verify_traffic_redirection(redsocks_port)
 
             # Start log streaming in a separate thread
             console.print("Starting log streaming...", style="cyan")
