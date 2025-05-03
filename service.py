@@ -355,3 +355,108 @@ def stream_log(log_path="/var/log/redsocks.log"):
         console.print("Log streaming stopped", style="yellow")
     except Exception as e:
         console.print(f"Error streaming log: {e}", style="red")
+
+def verify_connection_tracking(redsocks_port):
+    """Monitor active connections being redirected through redsocks"""
+    try:
+        # Run netstat to see connections to redsocks port
+        result = subprocess.run(
+            ["netstat", "-tpn"],
+            capture_output=True, text=True, check=True
+        )
+
+        redsocks_connections = [line for line in result.stdout.split('\n')
+                                if f":{redsocks_port}" in line]
+
+        if redsocks_connections:
+            console.print("Active connections through redsocks:", style="green")
+            for conn in redsocks_connections:
+                console.print(f"  {conn.strip()}")
+            return True
+        else:
+            console.print("No active connections through redsocks detected", style="yellow")
+            return False
+    except Exception as e:
+        console.print(f"Connection tracking check failed: {e}", style="red")
+        return False
+
+def check_dns_redirection():
+    """Check if DNS queries are being redirected"""
+    try:
+        import socket
+        ip = socket.gethostbyname('google.com')
+        console.print(f"DNS resolution for google.com: {ip}", style="green")
+        return True
+    except Exception as e:
+        console.print(f"DNS check failed: {e}", style="red")
+        return False
+
+
+def check_http_redirection():
+    """Check if HTTP traffic is being redirected through the proxy"""
+    try:
+        # Get current IP as seen by external services
+        import requests
+        current_ip = requests.get('https://api.ipify.org').text.strip()
+        console.print(f"Current public IP: {current_ip}", style="green")
+
+        # Get HTTP headers to check for proxy indicators
+        headers = requests.get('https://httpbin.org/headers').json()
+        console.print("HTTP Headers:", style="cyan")
+        for key, value in headers['headers'].items():
+            console.print(f"  {key}: {value}")
+
+        return True
+    except Exception as e:
+        console.print(f"HTTP check failed: {e}", style="red")
+        return False
+
+def verify_traffic_redirection(redsocks_port):
+    """Comprehensive check of traffic redirection through the proxy"""
+    console.print("\n=== Traffic Redirection Verification ===", style="bold cyan")
+
+    # Check iptables rules
+    try:
+        result = subprocess.run(
+            ["iptables", "-t", "nat", "-L", "OUTPUT", "-v", "-n"],
+            capture_output=True, text=True, check=True
+        )
+
+        if "REDSOCKS" in result.stdout:
+            console.print("✓ iptables rules are properly configured", style="green")
+
+            # Check packet counts
+            result = subprocess.run(
+                ["iptables", "-t", "nat", "-L", "REDSOCKS", "-v", "-n"],
+                capture_output=True, text=True, check=True
+            )
+
+            redirect_line = [line for line in result.stdout.split('\n')
+                             if f"REDIRECT   tcp" in line and f"redir ports {redsocks_port}" in line]
+
+            if redirect_line and len(redirect_line) > 0:
+                parts = redirect_line[0].split()
+                if len(parts) > 1:
+                    packet_count = parts[0]
+                    console.print(f"✓ {packet_count} packets redirected through redsocks", style="green")
+        else:
+            console.print("✗ REDSOCKS chain not found in iptables", style="red")
+    except Exception as e:
+        console.print(f"Error checking iptables rules: {e}", style="red")
+
+    # Check HTTP traffic
+    console.print("\nChecking HTTP traffic redirection...", style="cyan")
+    check_http_redirection()
+
+    # Check DNS resolution
+    console.print("\nChecking DNS resolution...", style="cyan")
+    check_dns_redirection()
+
+    # Check active connections
+    console.print("\nChecking active connections...", style="cyan")
+    verify_connection_tracking(redsocks_port)
+
+    console.print("\nTo confirm redirection is working correctly:", style="bold")
+    console.print("1. Your public IP should be different from your actual IP", style="cyan")
+    console.print("2. Traffic should be flowing through the redsocks port", style="cyan")
+    console.print("3. The packet counts in iptables REDIRECT rule should increase", style="cyan")

@@ -11,7 +11,7 @@ from config import generate_redsocks_config
 from service import (
     start_redsocks, stop_redsocks,
     setup_iptables, clean_iptables, check_socks5_connectivity,
-    validate_redsocks_config, stream_log
+    validate_redsocks_config, stream_log, verify_traffic_redirection
 )
 from ssh_tunnel import setup_ssh_tunnel, stop_ssh_tunnel
 
@@ -98,6 +98,8 @@ def main():
 
             console.print("Setting up traffic redirection with iptables...", style="cyan")
             setup_iptables(redsocks_port, ssh_tunnel_port)
+
+            verify_traffic_redirection(5020)
 
             # Start log streaming in a separate thread
             console.print("Starting log streaming...", style="cyan")
