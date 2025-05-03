@@ -402,7 +402,7 @@ def check_http_redirection():
         # <p><code class="ip">2407:6ac0:3:9d:abcd::1c8</code></p>
         get_ip = re.search(r'<code class="ip">(.+?)</code>', current_ip)
         if get_ip:
-            console.print(f"Current public IP: {current_ip}", style="green")
+            console.print(f"Current public IP: {get_ip}", style="green")
 
         # Get HTTP headers to check for proxy indicators
         headers = requests.get('https://httpbin.org/headers').json()
