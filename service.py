@@ -397,7 +397,7 @@ def check_http_redirection():
     try:
         # Get current IP as seen by external services
         import requests
-        current_ip = requests.get('https://api.ipify.org').text.strip()
+        current_ip = requests.get('https://ifconfig.co').text.strip()
         console.print(f"Current public IP: {current_ip}", style="green")
 
         # Get HTTP headers to check for proxy indicators
