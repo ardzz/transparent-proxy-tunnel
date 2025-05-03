@@ -1,5 +1,3 @@
-Based on your request and the provided redsocks log, I'll add a section about understanding the redsocks logs to your README.md documentation:
-
 # Transparent Proxy Tool Documentation
 
 ## Overview
