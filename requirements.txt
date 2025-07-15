@@ -1,5 +1,5 @@
-pip~=23.2.1
 psutil~=7.0.0
 rich~=14.0.0
 dotenv~=0.9.9
 python-dotenv~=1.1.0
+requests
