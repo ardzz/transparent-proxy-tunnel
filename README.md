@@ -1,7 +1,6 @@
 # Transparent Proxy Tool
 
-![part_1.png](images/part_1.png)
-![part_2.png](images/part_2.png)
+![screenshot.png](images/screenshot.png)
 
 ## Overview
 This transparent proxy tool allows you to redirect all TCP traffic through a SOCKS5 proxy created via an SSH tunnel. The tool supports both Windows (limited functionality with manual proxy configuration) and Linux (full transparent proxy capability using redsocks and iptables).
