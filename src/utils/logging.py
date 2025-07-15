@@ -31,7 +31,6 @@ def setup_logging(
 
     logger.handlers.clear()
 
-    # Consistent timestamp format for file logging
     file_formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%m/%d/%y %H:%M:%S'
@@ -44,7 +43,7 @@ def setup_logging(
         logger.addHandler(file_handler)
 
     if console_output:
-        # Configure RichHandler with consistent timestamp format
+
         console_handler = RichHandler(
             rich_tracebacks=True,
             show_time=False,
@@ -52,9 +51,8 @@ def setup_logging(
             show_path=False,
             markup=True
         )
-        console_handler.setLevel(level)
 
-        # Set consistent date format for Rich logging
+        console_handler.setLevel(level)
         console_handler._log_render.show_time = False
 
         logger.addHandler(console_handler)
