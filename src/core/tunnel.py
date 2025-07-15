@@ -147,21 +147,62 @@ class SSHTunnel:
 
     def _sanitize_command(self, command: list[str]) -> list[str]:
         """Remove sensitive information from command for logging."""
-        sanitized = []
-        skip_next = False
+        if not command:
+            return []
 
-        for i, arg in enumerate(command):
-            if skip_next:
-                sanitized.append("******")
-                skip_next = False
-            elif arg in ["-p", "-i"] or arg.startswith("-p"):
-                sanitized.append(arg)
-                if not arg.startswith("-p"):
-                    skip_next = True
+        sanitized = []
+        i = 0
+
+        while i < len(command):
+            current_arg = command[i]
+
+            if current_arg == "sshpass":
+                sanitized.append(current_arg)
+                i += 1
+
+                if i < len(command) and command[i] == "-p":
+                    sanitized.append("-p")
+                    sanitized.append("******")
+                    i += 2
+                elif i < len(command) and command[i].startswith("-p"):
+                    sanitized.append("-p******")
+                    i += 1
                 else:
-                    sanitized[-1] = "-p ******"
+                    continue
+
+            elif current_arg == "-i":
+                sanitized.append(current_arg)
+                if i + 1 < len(command):
+                    sanitized.append("******")
+                    i += 2
+                else:
+                    i += 1
+
+            elif current_arg.startswith("-i"):
+                sanitized.append("-i******")
+                i += 1
+
+            elif current_arg in ["-o", "--option"] and i + 1 < len(command):
+                next_arg = command[i + 1]
+                sanitized.append(current_arg)
+
+                if any(pwd_opt in next_arg.lower() for pwd_opt in ["password", "passwd"]):
+                    sanitized.append("******")
+                else:
+                    sanitized.append(next_arg)
+                i += 2
+
+            elif any(sensitive in current_arg.lower() for sensitive in ["password=", "passwd=", "pass="]):
+                if "=" in current_arg:
+                    key_part = current_arg.split("=")[0]
+                    sanitized.append(f"{key_part}=******")
+                else:
+                    sanitized.append("******")
+                i += 1
+
             else:
-                sanitized.append(arg)
+                sanitized.append(current_arg)
+                i += 1
 
         return sanitized
 
