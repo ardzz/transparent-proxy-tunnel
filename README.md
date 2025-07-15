@@ -1,8 +1,77 @@
 # Transparent Proxy Tool
+
 ![part_1.png](images/part_1.png)
 ![part_2.png](images/part_2.png)
+
 ## Overview
 This transparent proxy tool allows you to redirect all TCP traffic through a SOCKS5 proxy created via an SSH tunnel. The tool supports both Windows (limited functionality with manual proxy configuration) and Linux (full transparent proxy capability using redsocks and iptables).
+
+## How It Works
+
+### Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Local Machine"
+        App[Application] --> Socket[TCP Socket]
+        Socket --> IPTables[iptables Rules]
+        IPTables --> Redsocks[Redsocks Service]
+        Redsocks --> SOCKS5[SOCKS5 Client]
+        SOCKS5 --> SSHTunnel[SSH Tunnel]
+    end
+    
+    subgraph "Remote SSH Server"
+        SSHTunnel --> SSHDaemon[SSH Daemon]
+        SSHDaemon --> RemoteSocket[Remote Socket]
+        RemoteSocket --> Internet[Internet]
+    end
+    
+    Internet --> Target[Target Server]
+    
+    style App fill:#e1f5fe
+    style IPTables fill:#fff3e0
+    style Redsocks fill:#f3e5f5
+    style SOCKS5 fill:#e8f5e8
+    style SSHTunnel fill:#fff8e1
+    style Target fill:#ffebee
+```
+
+### Detailed Traffic Flow
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant OS as Operating System
+    participant IPT as iptables
+    participant RS as Redsocks
+    participant SSH as SSH Tunnel
+    participant Remote as Remote Server
+    participant Target as Target Website
+    
+    Note over App,Target: 1. Initial Setup Phase
+    SSH->>Remote: Establish SSH connection with -D flag
+    Remote-->>SSH: SOCKS5 proxy tunnel created
+    RS->>RS: Start redsocks service on port 5020
+    IPT->>IPT: Configure NAT rules for traffic redirection
+    
+    Note over App,Target: 2. Application Request Phase
+    App->>OS: Connect to example.com:80
+    OS->>IPT: Route TCP packet through NAT table
+    IPT->>RS: Redirect to redsocks port 5020
+    
+    Note over App,Target: 3. SOCKS5 Proxying Phase
+    RS->>SSH: Forward request via SOCKS5 protocol
+    SSH->>Remote: Send through encrypted SSH tunnel
+    Remote->>Target: Connect to actual target server
+    
+    Note over App,Target: 4. Response Phase
+    Target-->>Remote: Send response data
+    Remote-->>SSH: Forward through tunnel
+    SSH-->>RS: Receive via SOCKS5
+    RS-->>OS: Return to original socket
+    OS-->>App: Deliver response to application
+```
+
 ## Features
 
 - Creates SSH tunnels with SOCKS5 proxy capability
